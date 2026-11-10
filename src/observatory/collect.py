@@ -135,6 +135,22 @@ def retry_after(value: str | None, cap: float):
     return min(cap, max(0, seconds))
 
 
+def record_counts(family, data):
+    """Count declared response grains explicitly; parent envelopes are not always records."""
+    counts = {"envelopes": len(data)}
+    if family.startswith(("opendata-insurance", "opendata-pension", "opendata-capitalization")):
+        if data and all(isinstance(r, dict) and isinstance(r.get("society"), dict) and
+                        isinstance(r["society"].get("products"), list) for r in data):
+            counts["products"] = sum(len(r["society"]["products"]) for r in data)
+    if family == "channels_banking-agents" and data:
+        if all(isinstance(r, dict) and isinstance(r.get("bankingAgents"), list) for r in data):
+            agents = [a for r in data for a in r["bankingAgents"]]
+            counts["agents"] = len(agents)
+            if all(isinstance(a, dict) and isinstance(a.get("locations"), list) for a in agents):
+                counts["locations"] = sum(len(a["locations"]) for a in agents)
+    return counts
+
+
 class Collector:
     def __init__(self, lake: Lake, policy=Policy(), transport=None):
         self.lake, self.policy = lake, policy
@@ -178,6 +194,7 @@ class Collector:
         capture = {"policy": asdict(self.policy), "endpoint_id": target["endpoint_id"], "meta": meta, "objects": [], "format": "http-pages",
                    "bytes": 0, "page_log": []}
         seen, records, total_reported = set(), 0, 0
+        counts = {}
         try:
             if "{" in target["url"]:
                 raise ValueError("templated_endpoint_requires_parameters")
@@ -200,6 +217,8 @@ class Collector:
                 seen.add(page_hash)
                 capture["objects"].append(sha)
                 records += len(data)
+                for grain, count in record_counts(target["family"], data).items():
+                    counts[grain] = counts.get(grain, 0) + count
                 pagination = payload.get("meta", {})
                 if not isinstance(pagination, dict):
                     raise ValueError("invalid_pagination_contract")
@@ -213,10 +232,10 @@ class Collector:
                     if total_reported and reported != total_reported:
                         raise ValueError("pagination_total_changed")
                     total_reported = reported
-                if records > self.policy.max_records:
+                if max(counts.values(), default=0) > self.policy.max_records:
                     raise ValueError("record_limit")
                 if (total_pages and page >= total_pages) or not data:
-                    if (reported is not None and total_reported != records) or (not data and total_pages > page):
+                    if (reported is not None and total_reported not in counts.values()) or (not data and total_pages > page):
                         raise ValueError("reported_total_mismatch")
                     break
                 if records >= self.policy.max_records:
@@ -227,6 +246,8 @@ class Collector:
             meta["error"] = str(error)[:500] or type(error).__name__
         meta["truncated"] = bool(meta["error"] and records)
         meta["records"], meta["total_records_reported"] = records, total_reported
+        meta["record_counts"] = counts
+        meta["reported_count_grains"] = [grain for grain, count in counts.items() if count == total_reported]
         return capture
 
     async def run(self, catalog: dict, resume: str | None = None):

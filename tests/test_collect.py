@@ -157,3 +157,18 @@ async def test_failed_endpoint_preserves_error_body_lineage(lake):
     endpoint = pq.read_table(path / "endpoints.parquet").to_pylist()[0]
     assert endpoint["source_sha"] == result["page_log"][0]["sha"]
     assert lake.get(endpoint["source_sha"]) == b"Forbidden"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('family,data,total,grain', [
+    ('opendata-insurance_personals', [{'society': {'products': [{'name': 'a'}, {'name': 'b'}]}}], 2, 'products'),
+    ('channels_banking-agents', [{'bankingAgents': [{'locations': [{}, {}]}]}], 2, 'locations'),
+])
+async def test_pagination_reconciles_nested_records(lake, family, data, total, grain):
+    collector = Collector(lake, Policy(interval=0, retries=0))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            'data': data, 'meta': {'totalPages': 1, 'totalRecords': total}}))) as client:
+        result = await collector.capture(client, {**TARGET, 'family': family})
+    assert result['meta']['error'] == ''
+    assert result['meta']['records'] == 1
+    assert grain in result['meta']['reported_count_grains']
