@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       refresh_data:
-        description: 'Coletar dados novos das APIs (desmarque para republicar a extração atual)'
+        description: 'Coletar dados novos das APIs (desmarque para republicar a extraÃ§Ã£o atual)'
         type: boolean
         default: true
 permissions:
@@ -48,15 +48,15 @@ jobs:
           else
             python scripts/cloud_pipeline.py prepare
           fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
       - name: Remove unsuccessful temporary candidate
         if: ${{ failure() && steps.prepare.outputs.candidate_tag != '' }}
         env:
           CANDIDATE_TAG: ${{ steps.prepare.outputs.candidate_tag }}
         run: python scripts/cloud_pipeline.py discard --tag "$CANDIDATE_TAG"
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: site
   deploy:
     needs: build
     runs-on: ubuntu-latest
