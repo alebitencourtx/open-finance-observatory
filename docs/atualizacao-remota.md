@@ -33,3 +33,11 @@ Pages e Releases não têm uma transação conjunta. Se o deploy concluir e a co
 Os pacotes publicados podem ser baixados em **Releases**. Para recuperar uma falha transitória de execução, use **Re-run all jobs**. Os logs do Actions mostram erro por endpoint e o gate que impediu a atualização. Uma execução reprovada não conta como nova extração aprovada.
 
 Não existe atualização contínua nem promessa de horário exato. Se um agendamento for adicionado no futuro, terá as mesmas validações e retenção e deverá compartilhar a exclusão mútua do deploy.
+
+## Contratos observados na coleta remota
+
+A cadeia pública ICP-Brasil v10 é carregada somente pelo transporte de api.bradesco.com, com raiz obtida por HTTPS do ITI e fingerprint fixado. Os demais hosts usam a loja padrão. Não há fallback sem validação TLS.
+
+Totais de registros são reconciliados com os grãos presentes na resposta (envelopes, produtos, correspondentes ou locais); o manifesto registra as contagens e os grãos correspondentes ao total informado. Os indicadores de registros de origem continuam usando envelopes de primeiro nível.
+
+A rota exata `https://api.itau/open-banking/channels/v2/branches` publica `meta.totalRecords` como quantidade **da página**, embora existam várias páginas. Esse adaptador valida cada contagem de página e percorre `totalPages`; registra `reported_total_scope=page`. Não se aplica essa exceção a outros hosts/rotas. Divergências de contagem continuam sendo erros. O grão observado foi conferido em respostas reais de páginas distintas em 10/11/2026; isso não implica conformidade regulatória da origem.

@@ -172,3 +172,18 @@ async def test_pagination_reconciles_nested_records(lake, family, data, total, g
     assert result['meta']['error'] == ''
     assert result['meta']['records'] == 1
     assert grain in result['meta']['reported_count_grains']
+
+
+@pytest.mark.asyncio
+async def test_itau_branches_scoped_page_totals_still_require_all_pages(lake):
+    def handler(request):
+        page = int(request.url.params['page'])
+        data = [{'name': 'A'}, {'name': 'B'}] if page == 1 else [{'name': 'C'}]
+        return httpx.Response(200, json={'data': data, 'meta': {'totalRecords': len(data), 'totalPages': 2}})
+    collector = Collector(lake, Policy(interval=0, retries=0))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await collector.capture(client, {**TARGET, 'family': 'channels_branches',
+                         'url': 'https://api.itau/open-banking/channels/v2/branches'})
+    assert result['meta']['error'] == ''
+    assert result['meta']['records'] == 3
+    assert result['meta']['reported_total_scope'] == 'page'

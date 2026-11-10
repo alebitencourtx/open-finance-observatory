@@ -195,6 +195,10 @@ class Collector:
                    "bytes": 0, "page_log": []}
         seen, records, total_reported = set(), 0, 0
         counts = {}
+        parsed = urlsplit(target["url"])
+        # Observed Itaú v2 branches contract publishes a per-page total, not a global total.
+        page_scoped = parsed.hostname == "api.itau" and parsed.path.rstrip("/") == "/open-banking/channels/v2/branches"
+        meta["reported_total_scope"] = "page" if page_scoped else "result"
         try:
             if "{" in target["url"]:
                 raise ValueError("templated_endpoint_requires_parameters")
@@ -229,13 +233,15 @@ class Collector:
                 total_pages = pagination.get("totalPages") or 0
                 reported = pagination.get("totalRecords")
                 if reported is not None:
-                    if total_reported and reported != total_reported:
+                    if page_scoped and reported != len(data):
+                        raise ValueError("reported_page_total_mismatch")
+                    if not page_scoped and total_reported and reported != total_reported:
                         raise ValueError("pagination_total_changed")
                     total_reported = reported
                 if max(counts.values(), default=0) > self.policy.max_records:
                     raise ValueError("record_limit")
                 if (total_pages and page >= total_pages) or not data:
-                    if (reported is not None and total_reported not in counts.values()) or (not data and total_pages > page):
+                    if (not page_scoped and reported is not None and total_reported not in counts.values()) or (not data and total_pages > page):
                         raise ValueError("reported_total_mismatch")
                     break
                 if records >= self.policy.max_records:
