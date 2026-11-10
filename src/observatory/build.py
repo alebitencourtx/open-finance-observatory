@@ -141,7 +141,7 @@ def build(lake: Lake, snapshot_id: str | None = None, output: Path | None = None
 
 
 def render_dashboard(build_root: Path, output: Path):
-    """Stage a complete immutable release; only the entry point commits publication."""
+    """Stage immutable assets; publish the real dashboard HTML at the root."""
     output.mkdir(parents=True, exist_ok=True)
     with Lake(output).lock():
         releases = output / "releases"
@@ -156,13 +156,19 @@ def render_dashboard(build_root: Path, output: Path):
             atomic_write(stage / "data.js", b"window.OFB_DATA=" + payload + b";\n")
             atomic_write(stage / "dashboard.json", payload)
             generate(build_root, stage / "manual.html")
+            # Keep direct links to the optional versioned HTML usable as well.
+            versioned_html = (stage / "index.html").read_text(encoding="utf-8").replace('href="documentacao.html"', 'href="../../documentacao.html"')
+            atomic_write(stage / "index.html", versioned_html.encode())
             release_id = digest(b"".join(f.read_bytes() for f in sorted(stage.iterdir())))[:24]
             destination = releases / release_id
             if not destination.exists():
                 stage.rename(destination)
                 stage.mkdir()  # TemporaryDirectory owns this path, not the committed release.
-            target = "releases/" + release_id + "/index.html"
-            entry = '<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Observatory</title><meta http-equiv="refresh" content="0;url=' + target + '"><a href="' + target + '">Abrir dashboard executivo</a><script>location.replace("' + target + '"+location.hash)</script></html>'
+            # The browser stays at / or /index.html. Only assets use immutable URLs,
+            # so an interrupted publication cannot replace JS/data under the old HTML.
+            entry = (HERE / "web" / "index.html").read_text(encoding="utf-8")
+            for asset in ("styles.css", "app.js", "data.js"):
+                entry = entry.replace('"' + asset + '"', '"releases/' + release_id + '/' + asset + '"')
             # Stable documentation URL survives replacement of older Pages releases.
             atomic_write(output / "documentacao.html", (destination / "manual.html").read_bytes())
             atomic_write(output / "manual.html", (destination / "manual.html").read_bytes())

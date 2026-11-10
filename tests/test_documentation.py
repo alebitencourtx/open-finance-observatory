@@ -46,10 +46,19 @@ def test_dashboard_links_to_stable_documentation(lake, legacy_source, tmp_path):
     output = tmp_path / "site"
     build(lake, output=output)
     release = next((output / "releases").iterdir())
-    text = (release / "index.html").read_text(encoding="utf-8")
-    assert 'href="../../documentacao.html"' in text
-    assert (release / "../../documentacao.html").resolve().read_bytes() == (release / "manual.html").read_bytes()
-    assert urljoin('https://example.github.io/project/releases/old/index.html', '../../documentacao.html') == 'https://example.github.io/project/documentacao.html'
+    text = (output / "index.html").read_text(encoding="utf-8")
+    assert '<main id="content"' in text
+    assert 'http-equiv="refresh"' not in text
+    assert 'location.replace' not in text
+    assert 'href="documentacao.html"' in text
+    assert (output / "documentacao.html").read_bytes() == (release / "manual.html").read_bytes()
+    assert urljoin('https://example.github.io/project/', 'documentacao.html') == 'https://example.github.io/project/documentacao.html'
+    inventory = Inventory()
+    inventory.feed(text)
+    for tag, attrs in inventory.assets:
+        if tag == 'script':
+            assert (output / attrs['src']).is_file()
+            assert attrs['src'].startswith('releases/')
     recovery = (output / "404.html").read_text(encoding="utf-8")
     assert 'location.replace' in recovery
     assert 'documentacao.html' in recovery

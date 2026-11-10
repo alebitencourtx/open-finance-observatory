@@ -23,7 +23,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m observatory.cli serve
 ```
 
-Abra `http://127.0.0.1:8765`. Também é possível abrir `dist/index.html` diretamente. O dashboard aponta para uma release completa com dados e documentação locais. Em Linux/macOS, substitua o executável por `.venv/bin/python`.
+Abra `http://127.0.0.1:8765`. Também é possível abrir `dist/index.html` diretamente. O dashboard abre diretamente na raiz, sem redirecionar a URL. Os assets versionados preservam a consistência da publicação. Em Linux/macOS, substitua o executável por `.venv/bin/python`.
 
 ```powershell
 .\.venv\Scripts\python.exe -m observatory.cli docs --output docs/documentacao.html
