@@ -1,0 +1,54 @@
+name: Validate and publish Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements-dev.lock
+      - run: python -m pip install --no-deps -e .
+      - run: python -m pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check src/observatory/web/app.js
+      - name: Verify and reproduce the public snapshot
+        run: |
+          cd datasets
+          sha256sum -c SHA256SUMS
+          cd ..
+          python -m zipfile -e datasets/bronze-2026-11-10.zip data/replay-source
+          python -m observatory.cli import data/replay-source
+          python -m observatory.cli verify
+          python -m observatory.cli build --output site
+          python -m observatory.cli docs --output site/documentacao.html
+          touch site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy dashboard and documentation
+        id: deployment
+        uses: actions/deploy-pages@v4

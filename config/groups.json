@@ -1,0 +1,5 @@
+{
+  "santander": {"label": "Santander", "domains": ["santander.com.br"], "cnpjs": ["90400888000142"]},
+  "itau": {"label": "Itaú Unibanco", "domains": ["itau"], "cnpjs": ["60701190000104"]},
+  "bradesco": {"label": "Bradesco", "domains": ["bradesco.com"], "cnpjs": ["60746948000112", "27098060000145", "43180355000112"]}
+}

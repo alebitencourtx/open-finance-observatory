@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-finance-observatory"
+version = "1.0.0"
+description = "Open Finance Brasil: coleta auditável e inteligência executiva"
+requires-python = ">=3.11"
+dependencies = ["duckdb>=1.4,<2", "pyarrow>=18,<24", "httpx[http2]>=0.28,<1", "truststore>=0.10,<1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2"]
+
+[project.scripts]
+observatory = "observatory.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+observatory = ["sql/*.sql", "web/*", "templates/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_default_fixture_loop_scope = "function"
