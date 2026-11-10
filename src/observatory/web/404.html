@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Observatory — endereço atualizado</title>
+<style>body{font:16px/1.7 system-ui,sans-serif;color:#203743;max-width:650px;margin:12vh auto;padding:24px}a{color:#107b6d}</style>
+<h1>O endereço desta versão mudou</h1>
+<p>Use os endereços permanentes para abrir o dashboard e a documentação.</p>
+<p><a id="dashboard" href="./">Dashboard executivo</a> · <a id="manual" href="documentacao.html">Documentação completa</a></p>
+<script>
+(() => {
+  const marker = '/releases/';
+  const position = location.pathname.indexOf(marker);
+  if (position < 0) return;
+  const root = location.pathname.slice(0, position) + '/';
+  document.getElementById('dashboard').href = root;
+  document.getElementById('manual').href = root + 'documentacao.html';
+  if (/\/releases\/[^/]+\/(manual\.html|index\.html)$/.test(location.pathname)) {
+    location.replace(root + (location.pathname.endsWith('/manual.html') ? 'documentacao.html' : '') + location.hash);
+  }
+})();
+</script>
+</html>

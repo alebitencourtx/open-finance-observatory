@@ -163,8 +163,10 @@ def render_dashboard(build_root: Path, output: Path):
                 stage.mkdir()  # TemporaryDirectory owns this path, not the committed release.
             target = "releases/" + release_id + "/index.html"
             entry = '<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Observatory</title><meta http-equiv="refresh" content="0;url=' + target + '"><a href="' + target + '">Abrir dashboard executivo</a><script>location.replace("' + target + '"+location.hash)</script></html>'
-            # The dashboard always links the manual inside its own immutable release.
+            # Stable documentation URL survives replacement of older Pages releases.
+            atomic_write(output / "documentacao.html", (destination / "manual.html").read_bytes())
             atomic_write(output / "manual.html", (destination / "manual.html").read_bytes())
+            atomic_write(output / "404.html", (HERE / "web" / "404.html").read_bytes())
             atomic_write(output / "dashboard.json", payload)
             atomic_write(output / "index.html", entry.encode())
 
