@@ -6,7 +6,13 @@ Engenharia de dados e inteligência executiva sobre as APIs públicas de Santand
 - **[Documentação funcional e técnica — HTML único](https://alebitencourtx.github.io/open-finance-observatory/documentacao.html)**
 - [Plano de revisão](PLAN.md) e [correções da versão 1.2.0](docs/correcoes-1.2.0.md).
 
-O dashboard usa o instantâneo real de **10/11/2026**, disponibilizado em `datasets/`. Não há dados de clientes, consentimentos ou pagamentos. Dados de mercado publicados não representam taxas negociadas ou participação de mercado.
+O site utiliza a **última extração aprovada em GitHub Releases**. O ZIP de **10/11/2026** em `datasets/` é o exemplo demonstrativo para reprodução e bootstrap; não substitui o estado operacional atual. Não há dados de clientes, consentimentos ou pagamentos. Dados de mercado publicados não representam taxas negociadas ou participação de mercado.
+
+## Documentação e projeto complementar
+
+A documentação canônica é o [HTML único publicado](https://alebitencourtx.github.io/open-finance-observatory/documentacao.html). Inclui regras, dicionário Arrow/SQL, três diagramas, CLI, gates remotos, TLS, exceções de paginação, recuperação, arquivos operacionais incorporados e critérios de leitura de todas as seções. [Índice de documentação](docs/README.md).
+
+O checkout local está em `teste-opendata/observatory-opendata/`. O [Admin Metrics Santander](https://alebitencourtx.github.io/admin-metrics/) está na pasta irmã `admin-metrics/`, com repositório próprio e agenda de duas horas. Este OpenData não tem cron e não mede diretamente o desempenho dos serviços de clientes.
 
 ## Executar localmente
 

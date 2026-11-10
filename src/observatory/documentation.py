@@ -4,14 +4,16 @@ from __future__ import annotations
 import ast
 import html
 import json
+import os
 from pathlib import Path
 
 import duckdb
 
 from .domain import SCHEMAS
-from .storage import atomic_write, read_json
+from .storage import atomic_write, read_json, digest
 
 HERE = Path(__file__).parent
+DOC_REVISION = "2026-11-10.2"
 
 
 def escape(value):
@@ -99,6 +101,27 @@ def code_examples():
     return ''.join(content)
 
 
+def operational_sources():
+    """Embed the actual operational inputs, so the standalone manual is reviewable."""
+    root = HERE.parents[1]
+    files = [("config/groups.json", "Perímetro operacional"),
+             ("requirements.lock", "Dependências fixadas"),
+             (".github/workflows/pages.yml", "Publicação e permissões"),
+             (".github/workflows/ci.yml", "Matriz de testes"),
+             ("scripts/cloud_pipeline.py", "Ciclo de extração remota"),
+             ("src/observatory/snapshots.py", "Pacote, restauração e gates de publicação"),
+             ("src/observatory/tls.py", "Confiança TLS por transporte")]
+    content, fingerprints = [], []
+    for name, title in files:
+        path = root / name
+        if not path.is_file():
+            continue
+        raw = path.read_bytes()
+        fingerprints.append((name, digest(raw)))
+        content.append('<details class="code-example"><summary>' + escape(title) + '<span>' + escape(name) + '</span></summary><pre><code>' + escape(raw.decode('utf-8')) + '</code></pre></details>')
+    return table(["Arquivo incorporado", "SHA-256"], fingerprints) + ''.join(content)
+
+
 def generate(build_root: Path, destination: Path) -> Path:
     payload = read_json(build_root / "dashboard.json")
     result_path = build_root / "build.json"
@@ -106,6 +129,8 @@ def generate(build_root: Path, destination: Path) -> Path:
         result_path = build_root / "execution.json"
     result = read_json(result_path) if result_path.exists() else {}
     template = (HERE / "templates" / "manual.html").read_text(encoding="utf-8")
+    template = template.replace('@' * 2 + 'SUPPLEMENT' + '@' * 2,
+                                (HERE / 'templates' / 'operations.html').read_text(encoding='utf-8'))
     gs = payload["group_metrics"]
     metrics = table(["Conglomerado", "Empresas", "Endpoints", "HTTP 200", "Ofertas", "Rede física", "Índice técnico"],
                     [(g["label"],g["companies"],g["endpoints"],g["http_ok"],number(g["products"]),number(g["physical_channels"]),g["quality_score"]) for g in gs])
@@ -130,8 +155,14 @@ def generate(build_root: Path, destination: Path) -> Path:
         "MEGABYTES": f'{payload["meta"]["bronze_bytes"]/1e6:.1f}', "DURATION": str(result.get("duration_seconds", "—")),
         "METRICS": metrics, "CHECKS": checks, "TABLES": build_tables, "SCHEMAS": dictionary(),
         "MART_SCHEMAS": ''.join(mart_schemas), "CODE": code_examples(),
+        "DOC_REVISION": DOC_REVISION,
+        "CODE_REVISION": os.getenv('GITHUB_SHA', 'Checkout local; consultar git rev-parse HEAD'),
+        "SOURCE_CODE_HASH": payload['meta'].get('code_hash', 'Não registrado'),
+        "COMPANIES": str(sum(g['companies'] for g in gs)),
+        "SOURCE_MODE": payload['meta']['origin'],
+        "OPERATING_SOURCES": operational_sources(),
     }
-    raw_keys = {"METRICS","CHECKS","TABLES","SCHEMAS","MART_SCHEMAS","CODE"}
+    raw_keys = {"METRICS","CHECKS","TABLES","SCHEMAS","MART_SCHEMAS","CODE","OPERATING_SOURCES"}
     for key,value in replacements.items():
         template = template.replace(f"@@{key}@@", value if key in raw_keys else escape(value))
     atomic_write(destination, template.encode("utf-8"))
