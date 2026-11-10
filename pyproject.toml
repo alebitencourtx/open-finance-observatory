@@ -19,7 +19,7 @@ observatory = "observatory.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-observatory = ["sql/*.sql", "web/*", "templates/*"]
+observatory = ["sql/*.sql", "web/*", "templates/*", "certificates/*.pem"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

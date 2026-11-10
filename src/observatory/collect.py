@@ -17,6 +17,7 @@ import httpx
 import truststore
 
 from .domain import family_label
+from .tls import bradesco_context
 from .storage import Lake, digest, encoded, read_json, utcnow, write_json
 
 DIRECTORY_URL = "https://data.directory.openbankingbrasil.org.br/participants"
@@ -257,8 +258,12 @@ class Collector:
             queue.put_nowait(target)
         context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         self.lake.save_snapshot(manifest, publish=False)
+        limits = httpx.Limits(max_connections=self.policy.concurrency)
+        mounts = None if self.transport else {
+            "https://api.bradesco.com": httpx.AsyncHTTPTransport(verify=bradesco_context(), http2=True, limits=limits)
+        }
         async with httpx.AsyncClient(verify=context, timeout=self.policy.timeout, transport=self.transport,
-                                    limits=httpx.Limits(max_connections=self.policy.concurrency),
+                                    mounts=mounts, limits=limits,
                                     follow_redirects=False, http2=True, headers={"User-Agent": "OpenFinanceObservatory/1.0"}) as client:
             async def worker():
                 while True:
