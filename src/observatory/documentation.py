@@ -28,6 +28,12 @@ def table(headers, data):
 
 
 FIELD_HELP = {
+    "transaction_type": "Compra ou venda publicada; dimensão independente da moeda.",
+    "delivery": "Forma de entrega da moeda estrangeira publicada pela instituição.",
+    "range_category": "Faixa de valor de operação utilizada na distribuição VET.",
+    "vet_minimum": "Valor mínimo de VET publicado; não substitui cotação online.",
+    "vet_maximum": "Valor máximo de VET publicado.",
+    "vet_prices": "JSON da distribuição original de VET por faixa, mediana e proporção de operações.",
     "group_id": "Identificador operacional do conglomerado; sem prova de controle societário.",
     "company": "Nome da empresa no catálogo de origem.", "cnpj": "CNPJ da empresa do catálogo; string para preservar zeros.",
     "family": "Código original da família/rota Open Finance.", "family_label": "Domínio analítico padronizado.",
