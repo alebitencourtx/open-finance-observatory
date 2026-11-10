@@ -1,8 +1,13 @@
-name: Validate and publish Pages
+name: Atualizar dados e publicar Pages
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      refresh_data:
+        description: 'Coletar dados novos das APIs (desmarque para republicar a extração atual)'
+        type: boolean
+        default: true
 permissions:
   contents: read
 concurrency:
@@ -10,6 +15,15 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
+    permissions:
+      contents: write
+      pages: read
+    timeout-minutes: 45
+    outputs:
+      candidate_tag: ${{ steps.prepare.outputs.candidate_tag }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,17 +38,21 @@ jobs:
         with:
           node-version: '22'
       - run: node --check src/observatory/web/app.js
-      - name: Verify and reproduce the public snapshot
+      - name: Prepare and validate extraction
+        id: prepare
+        env:
+          REFRESH_DATA: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_data }}
         run: |
-          cd datasets
-          sha256sum -c SHA256SUMS
-          cd ..
-          python -m zipfile -e datasets/bronze-2026-11-10.zip data/replay-source
-          python -m observatory.cli import data/replay-source
-          python -m observatory.cli verify
-          python -m observatory.cli build --output site
-          python -m observatory.cli docs --output site/documentacao.html
-          touch site/.nojekyll
+          if [ "$REFRESH_DATA" = "true" ]; then
+            python scripts/cloud_pipeline.py prepare --refresh
+          else
+            python scripts/cloud_pipeline.py prepare
+          fi
+      - name: Remove unsuccessful temporary candidate
+        if: ${{ failure() && steps.prepare.outputs.candidate_tag != '' }}
+        env:
+          CANDIDATE_TAG: ${{ steps.prepare.outputs.candidate_tag }}
+        run: python scripts/cloud_pipeline.py discard --tag "$CANDIDATE_TAG"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
@@ -43,12 +61,25 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
+      contents: write
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PYTHONPATH: src
+      CANDIDATE_TAG: ${{ needs.build.outputs.candidate_tag }}
     steps:
+      - uses: actions/checkout@v4
       - name: Deploy dashboard and documentation
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Confirm current extraction and retain only previous
+        if: ${{ success() && env.CANDIDATE_TAG != '' }}
+        run: python scripts/cloud_pipeline.py promote --tag "$CANDIDATE_TAG"
+      - name: Discard unapproved candidate after failure
+        if: ${{ failure() && env.CANDIDATE_TAG != '' }}
+        run: python scripts/cloud_pipeline.py discard --tag "$CANDIDATE_TAG"

@@ -68,7 +68,11 @@ Visão executiva, cobertura, portfólio, taxas e tarifas, rede, câmbio/VET, qua
 
 ## GitHub Pages
 
-Cada push em `main` executa testes, verifica o ZIP, reproduz o lake e gera dashboard/documentação em um único artefato. O deploy usa GitHub Actions e o ambiente `github-pages`. Dados e credenciais da máquina local não são necessários para publicar.
+Em **Actions → Atualizar dados e publicar Pages → Run workflow**, mantenha **Coletar dados novos das APIs** marcado para executar todo o ETL remotamente. Desmarque para republicar a extração atual sem nova coleta. Nenhum agendamento foi criado.
+
+O workflow mantém somente **atual + anterior** em GitHub Releases. A candidata passa pelos gates antes do deploy; só é confirmada após o Pages publicar. Uma coleta reprovada preserva o último resultado aprovado. Push em `main` testa e republica a extração aprovada, sem disparar coleta remota involuntária.
+
+Veja [operação remota e recuperação](docs/atualizacao-remota.md). O ZIP de demonstração em `datasets/` permite o bootstrap inicial; as próximas republicações restauram os dados de Releases. Nenhuma credencial pessoal adicional é necessária: o Actions usa o token temporário do próprio repositório.
 
 O CI também testa Windows/Linux e Python 3.11/3.12. A imagem Docker é uma opção de execução em lote; operação contínua, autenticação corporativa e observabilidade remota precisam de infraestrutura própria.
 
